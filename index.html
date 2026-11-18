@@ -1,0 +1,2081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocxFlow Studio — 100% Offline Word File Merger</title>
+  <style>
+    /* ==========================================================================
+       DESIGN TOKENS & RESET (100% OFFLINE SYSTEM FONT STACK & WARM SLATE PALETTE)
+       ========================================================================== */
+    :root {
+      --bg-app: #f4f5f7;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f8fafc;
+      --bg-hover: #f1f5f9;
+      --bg-accent-soft: #eff6ff;
+      --border-light: #e2e8f0;
+      --border-medium: #cbd5e1;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      --brand-primary: #1d4ed8;
+      --brand-hover: #1e40af;
+      --brand-light: #dbeafe;
+      --success-bg: #ecfdf5;
+      --success-text: #065f46;
+      --success-border: #a7f3d0;
+      --warning-bg: #fffbeb;
+      --warning-text: #92400e;
+      --danger-text: #dc2626;
+      --danger-bg: #fef2f2;
+      --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+      --shadow-lg: 0 10px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background-color: var(--bg-app);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ==========================================================================
+       DESKTOP SINGLE-FILE APP TOOLBAR
+       ========================================================================== */
+    .desktop-toolbar {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 10px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .offline-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(16, 185, 129, 0.16);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+
+    .offline-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #34d399;
+    }
+
+    .brand-subtitle {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-toolbar {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .btn-toolbar-primary {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #3b82f6;
+    }
+
+    .btn-toolbar-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-toolbar-secondary {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-color: #334155;
+    }
+
+    .btn-toolbar-secondary:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    /* ==========================================================================
+       MAIN STUDIO WORKSPACE LAYOUT
+       ========================================================================== */
+    .workspace-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+      display: grid;
+      grid-template-columns: 1.35fr 0.95fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 960px) {
+      .workspace-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--bg-subtle);
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-body {
+      padding: 20px;
+    }
+
+    /* ==========================================================================
+       DROPZONE & FILE QUEUE
+       ========================================================================== */
+    .dropzone {
+      border: 2px dashed var(--border-medium);
+      border-radius: var(--radius-md);
+      background: var(--bg-subtle);
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      position: relative;
+    }
+
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: var(--brand-primary);
+      background: var(--bg-accent-soft);
+    }
+
+    .dropzone-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 12px;
+      border-radius: 12px;
+      background: var(--brand-light);
+      color: var(--brand-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dropzone-heading {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .dropzone-sub {
+      font-size: 13px;
+      color: var(--text-secondary);
+      max-width: 440px;
+      margin: 0 auto 14px;
+    }
+
+    .btn-browse {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-surface);
+      color: var(--brand-primary);
+      border: 1px solid var(--border-medium);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.15s ease;
+    }
+
+    .btn-browse:hover {
+      border-color: var(--brand-primary);
+      background: var(--bg-accent-soft);
+    }
+
+    .queue-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 20px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .queue-count {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .btn-text-danger {
+      background: none;
+      border: none;
+      color: var(--danger-text);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+    }
+
+    .btn-text-danger:hover {
+      background: var(--danger-bg);
+    }
+
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 80px;
+    }
+
+    .empty-queue {
+      text-align: center;
+      padding: 28px 16px;
+      color: var(--text-muted);
+      font-size: 13px;
+      background: var(--bg-subtle);
+      border-radius: var(--radius-md);
+      border: 1px dashed var(--border-light);
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      cursor: grab;
+    }
+
+    .file-item:hover {
+      border-color: var(--border-medium);
+      box-shadow: var(--shadow-md);
+    }
+
+    .file-item.dragging {
+      opacity: 0.5;
+      border-color: var(--brand-primary);
+    }
+
+    .file-item.selected {
+      border-color: var(--brand-primary);
+      background: var(--bg-accent-soft);
+    }
+
+    .file-order-badge {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-medium);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .file-item.selected .file-order-badge {
+      background: var(--brand-primary);
+      color: #ffffff;
+      border-color: var(--brand-primary);
+    }
+
+    .file-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .file-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+
+    .file-name {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge-base {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--brand-light);
+      color: var(--brand-primary);
+      flex-shrink: 0;
+    }
+
+    .file-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .file-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .btn-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .btn-icon:hover:not(:disabled) {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: var(--border-medium);
+    }
+
+    .btn-icon:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .btn-icon.danger:hover {
+      background: var(--danger-bg);
+      color: var(--danger-text);
+      border-color: #fecaca;
+    }
+
+    /* ==========================================================================
+       MERGE SETTINGS & CONTROLS
+       ========================================================================== */
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .form-input, .form-select {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-medium);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: var(--brand-primary);
+      box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+    }
+
+    .radio-cards {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .radio-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      background: var(--bg-subtle);
+      transition: all 0.15s ease;
+    }
+
+    .radio-card:hover {
+      border-color: var(--border-medium);
+    }
+
+    .radio-card.active {
+      border-color: var(--brand-primary);
+      background: var(--bg-accent-soft);
+    }
+
+    .radio-card input[type="radio"] {
+      margin-top: 3px;
+      accent-color: var(--brand-primary);
+    }
+
+    .radio-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .radio-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      margin-top: 3px;
+      width: 16px;
+      height: 16px;
+      accent-color: var(--brand-primary);
+      cursor: pointer;
+    }
+
+    .checkbox-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .checkbox-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .btn-merge-main {
+      width: 100%;
+      padding: 13px 20px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+      color: #ffffff;
+      border: 1px solid #1e40af;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
+      transition: all 0.15s ease;
+      margin-top: 8px;
+    }
+
+    .btn-merge-main:hover:not(:disabled) {
+      background: linear-gradient(180deg, #1d4ed8 0%, #1e3a8a 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(29, 78, 216, 0.32);
+    }
+
+    .btn-merge-main:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ==========================================================================
+       LIVE PREVIEW & LOG PANEL
+       ========================================================================== */
+    .preview-tabs {
+      display: flex;
+      gap: 6px;
+    }
+
+    .tab-btn {
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background: var(--bg-surface);
+      color: var(--brand-primary);
+      border-color: var(--border-light);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .preview-box {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      max-height: 340px;
+      overflow-y: auto;
+      font-size: 13px;
+      color: var(--text-primary);
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.6;
+    }
+
+    .preview-placeholder {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 24px 12px;
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .stat-pill {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .status-log {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      background: #0f172a;
+      color: #cbd5e1;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      max-height: 130px;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+
+    .log-entry {
+      margin-bottom: 3px;
+    }
+
+    .log-ok { color: #34d399; }
+    .log-info { color: #60a5fa; }
+    .log-warn { color: #fbbf24; }
+    .log-err { color: #f87171; }
+
+    /* ==========================================================================
+       TOAST NOTIFICATION (NEVER USE alert() OR confirm())
+       ========================================================================== */
+    .toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-left: 4px solid #3b82f6;
+      max-width: 380px;
+      animation: slideIn 0.2s ease-out;
+      pointer-events: auto;
+    }
+
+    .toast.success { border-left-color: #10b981; }
+    .toast.error { border-left-color: #ef4444; }
+    .toast.warning { border-left-color: #f59e0b; }
+
+    @keyframes slideIn {
+      from { transform: translateY(12px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       TOP DESKTOP EXPORT & OFFLINE STATUS TOOLBAR
+       ======================================================================== -->
+  <header class="desktop-toolbar">
+    <div class="brand-group">
+      <div class="brand-icon" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <path d="M9 15l2 2 4-4"></path>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">
+          DocxFlow Studio
+          <span class="offline-pill"><span class="offline-dot"></span> 100% Offline</span>
+        </div>
+        <div class="brand-subtitle">Zero-dependency local Word (.docx) integrator &amp; XML merger</div>
+      </div>
+    </div>
+
+    <div class="toolbar-actions">
+      <button type="button" id="btnCopyAppHtml" class="btn-toolbar btn-toolbar-secondary" title="Copy standalone HTML source code">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        Copy App HTML
+      </button>
+      <button type="button" id="btnSaveDesktop" class="btn-toolbar btn-toolbar-primary" title="Save this entire app as a single offline HTML file on your computer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Save App to Desktop (.html)
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       MAIN TWO-COLUMN DOCUMENT STUDIO WORKSPACE
+       ======================================================================== -->
+  <main class="workspace-container">
+
+    <!-- LEFT COLUMN: FILE UPLOAD & ORDERING QUEUE -->
+    <section class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+          1. Source Word Documents
+        </div>
+        <span style="font-size: 12px; color: var(--text-muted);">Supports .docx &amp; .txt</span>
+      </div>
+
+      <div class="card-body">
+        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop Word files here or click to browse">
+          <input type="file" id="fileInput" accept=".docx,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" multiple hidden>
+          <div class="dropzone-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+          <div class="dropzone-heading">Drag &amp; drop Word (.docx) files here</div>
+          <div class="dropzone-sub">
+            All processing happens locally in your browser's memory. Your files never leave your computer.
+          </div>
+          <button type="button" id="btnBrowseFiles" class="btn-browse">
+            Select Files from Computer
+          </button>
+        </div>
+
+        <div class="queue-toolbar">
+          <span id="queueCountLabel" class="queue-count">0 files queued</span>
+          <button type="button" id="btnClearAll" class="btn-text-danger" style="display: none;">Clear All</button>
+        </div>
+
+        <div id="fileList" class="file-list">
+          <div class="empty-queue">
+            No documents added yet. Add two or more <strong>.docx</strong> files to merge them in order.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: INTEGRATION OPTIONS, PREVIEW & EXPORT -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+
+      <!-- MERGE CONFIGURATION CARD -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            2. Merge &amp; Integration Settings
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="form-group">
+            <label for="outputFilename" class="form-label">Output Filename</label>
+            <input type="text" id="outputFilename" class="form-input" value="Merged_Document.docx" placeholder="Merged_Document.docx">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Document Separator Mode</label>
+            <div class="radio-cards" id="separatorGroup">
+              <label class="radio-card active">
+                <input type="radio" name="separatorMode" value="pagebreak" checked>
+                <div>
+                  <div class="radio-title">Page Break Between Files</div>
+                  <div class="radio-desc">Starts each integrated document cleanly at the top of a new page.</div>
+                </div>
+              </label>
+
+              <label class="radio-card">
+                <input type="radio" name="separatorMode" value="heading">
+                <div>
+                  <div class="radio-title">File Title Heading + Divider</div>
+                  <div class="radio-desc">Inserts the source filename as a bold section heading before its content.</div>
+                </div>
+              </label>
+
+              <label class="radio-card">
+                <input type="radio" name="separatorMode" value="continuous">
+                <div>
+                  <div class="radio-title">Continuous Flow</div>
+                  <div class="radio-desc">Joins documents directly with a single clean paragraph spacer.</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="checkbox-row">
+              <input type="checkbox" id="chkIncludeIndex">
+              <div>
+                <div class="checkbox-label">Include Document Index at Top</div>
+                <div class="checkbox-sub">Adds a summary cover list of all merged files on page 1.</div>
+              </div>
+            </label>
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="chkPreserveFormatting" checked>
+              <div>
+                <div class="checkbox-label">Preserve Source Formatting &amp; Tables</div>
+                <div class="checkbox-sub">Keeps bold, italic, font sizes, lists, and full Word tables intact.</div>
+              </div>
+            </label>
+          </div>
+
+          <button type="button" id="btnMergeDownload" class="btn-merge-main" disabled>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+              <path d="M12 8v8"></path>
+              <path d="M8 12h8"></path>
+            </svg>
+            Merge &amp; Download .DOCX
+          </button>
+        </div>
+      </section>
+
+      <!-- LIVE INSPECTOR & MERGED PREVIEW CARD -->
+      <section class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            3. Content Preview &amp; Engine Log
+          </div>
+          <div class="preview-tabs">
+            <button type="button" id="tabCombinedPreview" class="tab-btn active">Combined Outline</button>
+            <button type="button" id="tabSelectedFile" class="tab-btn">Selected File</button>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div id="previewBox" class="preview-box">
+            <div class="preview-placeholder">Upload Word (.docx) files to inspect extracted paragraphs, tables, and structure.</div>
+          </div>
+
+          <div class="stats-bar">
+            <div class="stat-pill">
+              <div id="statFiles" class="stat-value">0</div>
+              <div class="stat-label">Documents</div>
+            </div>
+            <div class="stat-pill">
+              <div id="statBlocks" class="stat-value">0</div>
+              <div class="stat-label">Paragraphs/Tbls</div>
+            </div>
+            <div class="stat-pill">
+              <div id="statWords" class="stat-value">0</div>
+              <div class="stat-label">Total Words</div>
+            </div>
+          </div>
+
+          <div id="statusLog" class="status-log" aria-live="polite">
+            <div class="log-entry log-info">[System] Offline OpenXML &amp; ZIP Engine initialized. Ready.</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- ========================================================================
+       100% SELF-CONTAINED VANILLA JAVASCRIPT ENGINE
+       - Pure JS CRC-32 + ZIP Reader (STORE & DEFLATE-RAW) + ZIP Writer (STORE)
+       - OpenXML (.docx) DOMParser Merger & Relationship Sanitizer
+       - Desktop Single-File Saver & Clipboard Exporter
+       ======================================================================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      /* ======================================================================
+         1. PURE JAVASCRIPT CRC-32 & ZERO-DEPENDENCY ZIP ARCHIVE ENGINE
+         ====================================================================== */
+      const CRC32_TABLE = (() => {
+        const table = new Uint32Array(256);
+        for (let i = 0; i < 256; i++) {
+          let c = i;
+          for (let k = 0; k < 8; k++) {
+            c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+          }
+          table[i] = c >>> 0;
+        }
+        return table;
+      })();
+
+      function computeCrc32(uint8Array) {
+        let crc = 0xFFFFFFFF;
+        for (let i = 0; i < uint8Array.length; i++) {
+          crc = CRC32_TABLE[(crc ^ uint8Array[i]) & 0xFF] ^ (crc >>> 8);
+        }
+        return (crc ^ 0xFFFFFFFF) >>> 0;
+      }
+
+      /**
+       * Decompress raw deflate stream using native browser DecompressionStream('deflate-raw')
+       */
+      async function inflateRawBytes(compressedBytes) {
+        if (typeof DecompressionStream === 'undefined') {
+          throw new Error('This browser does not support native DecompressionStream("deflate-raw"). Please use a modern browser (Chrome, Edge, Firefox, Safari 16.4+).');
+        }
+        const ds = new DecompressionStream('deflate-raw');
+        const writer = ds.writable.getWriter();
+        writer.write(compressedBytes);
+        writer.close();
+
+        const reader = ds.readable.getReader();
+        const chunks = [];
+        let totalLength = 0;
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          totalLength += value.byteLength;
+        }
+
+        const result = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const chunk of chunks) {
+          result.set(chunk, offset);
+          offset += chunk.byteLength;
+        }
+        return result;
+      }
+
+      /**
+       * Parse a .docx (ZIP) ArrayBuffer into a Map<string, Uint8Array> of uncompressed entries
+       */
+      async function readZipArchive(arrayBuffer) {
+        const bytes = new Uint8Array(arrayBuffer);
+        const view = new DataView(arrayBuffer);
+
+        // Locate End of Central Directory (EOCD signature: 0x06054b50)
+        const minEocdOffset = Math.max(0, bytes.length - 65557);
+        let eocdOffset = -1;
+        for (let i = bytes.length - 22; i >= minEocdOffset; i--) {
+          if (
+            bytes[i] === 0x50 &&
+            bytes[i + 1] === 0x4B &&
+            bytes[i + 2] === 0x05 &&
+            bytes[i + 3] === 0x06
+          ) {
+            eocdOffset = i;
+            break;
+          }
+        }
+
+        if (eocdOffset === -1) {
+          throw new Error('Invalid .docx archive: End of Central Directory signature not found.');
+        }
+
+        const totalEntries = view.getUint16(eocdOffset + 10, true);
+        const centralDirOffset = view.getUint32(eocdOffset + 16, true);
+
+        const entries = new Map();
+        const decoder = new TextDecoder('utf-8');
+        let ptr = centralDirOffset;
+
+        for (let i = 0; i < totalEntries; i++) {
+          if (ptr + 46 > bytes.length || view.getUint32(ptr, true) !== 0x02014b50) {
+            throw new Error('Corrupt ZIP Central Directory header.');
+          }
+
+          const compressionMethod = view.getUint16(ptr + 10, true);
+          const compressedSize = view.getUint32(ptr + 20, true);
+          const fileNameLength = view.getUint16(ptr + 28, true);
+          const extraFieldLength = view.getUint16(ptr + 30, true);
+          const fileCommentLength = view.getUint16(ptr + 32, true);
+          const localHeaderOffset = view.getUint32(ptr + 42, true);
+
+          const fileNameBytes = bytes.subarray(ptr + 46, ptr + 46 + fileNameLength);
+          const fileName = decoder.decode(fileNameBytes);
+
+          // Advance central directory pointer
+          ptr += 46 + fileNameLength + extraFieldLength + fileCommentLength;
+
+          // Skip directory entries
+          if (fileName.endsWith('/')) {
+            continue;
+          }
+
+          // Read Local File Header to locate exact data payload start
+          if (localHeaderOffset + 30 > bytes.length || view.getUint32(localHeaderOffset, true) !== 0x04034b50) {
+            throw new Error(`Corrupt Local File Header for entry: ${fileName}`);
+          }
+
+          const localNameLen = view.getUint16(localHeaderOffset + 26, true);
+          const localExtraLen = view.getUint16(localHeaderOffset + 28, true);
+          const dataStart = localHeaderOffset + 30 + localNameLen + localExtraLen;
+          const compressedData = bytes.subarray(dataStart, dataStart + compressedSize);
+
+          let uncompressedData;
+          if (compressionMethod === 0) {
+            // Method 0: Stored (no compression)
+            uncompressedData = new Uint8Array(compressedData);
+          } else if (compressionMethod === 8) {
+            // Method 8: Deflate
+            uncompressedData = await inflateRawBytes(compressedData);
+          } else {
+            throw new Error(`Unsupported ZIP compression method (${compressionMethod}) in ${fileName}`);
+          }
+
+          entries.set(fileName, uncompressedData);
+        }
+
+        return entries;
+      }
+
+      /**
+       * Build a 100% standards-compliant PKWARE ZIP archive using Method 0 (Stored)
+       * Guaranteed zero-corruption across MS Word, LibreOffice, and Google Docs.
+       */
+      function buildZipArchive(entriesMap) {
+        const encoder = new TextEncoder();
+        const fileRecords = [];
+        let totalLocalSize = 0;
+        let totalCentralSize = 0;
+
+        // Current DOS timestamp
+        const now = new Date();
+        const dosTime = ((now.getHours() & 0x1F) << 11) | ((now.getMinutes() & 0x3F) << 5) | ((Math.floor(now.getSeconds() / 2)) & 0x1F);
+        const dosDate = (((Math.max(1980, now.getFullYear()) - 1980) & 0x7F) << 9) | (((now.getMonth() + 1) & 0x0F) << 5) | (now.getDate() & 0x1F);
+
+        for (const [fileName, data] of entriesMap.entries()) {
+          const nameBytes = encoder.encode(fileName);
+          const crc = computeCrc32(data);
+          const size = data.byteLength;
+
+          const localHeaderSize = 30 + nameBytes.byteLength;
+          const centralHeaderSize = 46 + nameBytes.byteLength;
+
+          fileRecords.push({
+            nameBytes,
+            data,
+            crc,
+            size,
+            localOffset: totalLocalSize,
+            localHeaderSize,
+            centralHeaderSize
+          });
+
+          totalLocalSize += localHeaderSize + size;
+          totalCentralSize += centralHeaderSize;
+        }
+
+        const eocdSize = 22;
+        const totalArchiveSize = totalLocalSize + totalCentralSize + eocdSize;
+        const outputBuffer = new ArrayBuffer(totalArchiveSize);
+        const outBytes = new Uint8Array(outputBuffer);
+        const outView = new DataView(outputBuffer);
+
+        let offset = 0;
+
+        // 1. Write Local File Headers + File Payloads
+        for (const rec of fileRecords) {
+          outView.setUint32(offset, 0x04034b50, true); // Local file header signature
+          outView.setUint16(offset + 4, 20, true); // Version needed to extract (2.0)
+          outView.setUint16(offset + 6, 0x0800, true); // General purpose bit flag (UTF-8 filenames)
+          outView.setUint16(offset + 8, 0, true); // Compression method: 0 (Stored)
+          outView.setUint16(offset + 10, dosTime, true);
+          outView.setUint16(offset + 12, dosDate, true);
+          outView.setUint32(offset + 14, rec.crc, true);
+          outView.setUint32(offset + 18, rec.size, true); // Compressed size
+          outView.setUint32(offset + 22, rec.size, true); // Uncompressed size
+          outView.setUint16(offset + 26, rec.nameBytes.byteLength, true);
+          outView.setUint16(offset + 28, 0, true); // Extra field length
+
+          outBytes.set(rec.nameBytes, offset + 30);
+          offset += rec.localHeaderSize;
+
+          outBytes.set(rec.data, offset);
+          offset += rec.size;
+        }
+
+        const centralDirStart = offset;
+
+        // 2. Write Central Directory Headers
+        for (const rec of fileRecords) {
+          outView.setUint32(offset, 0x02014b50, true); // Central directory file header signature
+          outView.setUint16(offset + 4, 20, true); // Version made by
+          outView.setUint16(offset + 6, 20, true); // Version needed to extract
+          outView.setUint16(offset + 8, 0x0800, true); // General purpose bit flag (UTF-8)
+          outView.setUint16(offset + 10, 0, true); // Compression method: 0 (Stored)
+          outView.setUint16(offset + 12, dosTime, true);
+          outView.setUint16(offset + 14, dosDate, true);
+          outView.setUint32(offset + 16, rec.crc, true);
+          outView.setUint32(offset + 20, rec.size, true); // Compressed size
+          outView.setUint32(offset + 24, rec.size, true); // Uncompressed size
+          outView.setUint16(offset + 28, rec.nameBytes.byteLength, true);
+          outView.setUint16(offset + 30, 0, true); // Extra field length
+          outView.setUint16(offset + 32, 0, true); // File comment length
+          outView.setUint16(offset + 34, 0, true); // Disk number start
+          outView.setUint16(offset + 36, 0, true); // Internal file attributes
+          outView.setUint32(offset + 38, 0, true); // External file attributes
+          outView.setUint32(offset + 42, rec.localOffset, true);
+
+          outBytes.set(rec.nameBytes, offset + 46);
+          offset += rec.centralHeaderSize;
+        }
+
+        // 3. Write End of Central Directory Record (EOCD)
+        outView.setUint32(offset, 0x06054b50, true); // EOCD signature
+        outView.setUint16(offset + 4, 0, true); // Number of this disk
+        outView.setUint16(offset + 6, 0, true); // Disk where central directory starts
+        outView.setUint16(offset + 8, fileRecords.length, true); // Total entries on this disk
+        outView.setUint16(offset + 10, fileRecords.length, true); // Total entries
+        outView.setUint32(offset + 12, totalCentralSize, true); // Size of central directory
+        outView.setUint32(offset + 16, centralDirStart, true); // Offset of start of central directory
+        outView.setUint16(offset + 20, 0, true); // Comment length
+
+        return new Blob([outBytes], {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        });
+      }
+
+      /* ======================================================================
+         2. OPENXML (.DOCX) PARSER, SANITIZER & MERGER
+         ====================================================================== */
+      const W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+      /**
+       * Creates a minimal fallback .docx template in case the user merges only .txt files
+       */
+      function createFallbackDocxEntries() {
+        const enc = new TextEncoder();
+        const entries = new Map();
+
+        entries.set('[Content_Types].xml', enc.encode(
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+          '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+          '<Default Extension="xml" ContentType="application/xml"/>' +
+          '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+          '</Types>'
+        ));
+
+        entries.set('_rels/.rels', enc.encode(
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+          '</Relationships>'
+        ));
+
+        entries.set('word/_rels/document.xml.rels', enc.encode(
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '</Relationships>'
+        ));
+
+        entries.set('word/document.xml', enc.encode(
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+          '<w:body><w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body>' +
+          '</w:document>'
+        ));
+
+        return entries;
+      }
+
+      /**
+       * Parse an uploaded File (.docx or .txt) into structured metadata + XML nodes
+       */
+      async function parseUploadedDocument(file) {
+        const isTxt = file.name.toLowerCase().endsWith('.txt');
+        const arrayBuffer = await file.arrayBuffer();
+
+        if (isTxt) {
+          const text = new TextDecoder('utf-8').decode(arrayBuffer);
+          const lines = text.split(/\r?\n/);
+          const doc = new DOMParser().parseFromString(
+            `<w:document xmlns:w="${W_NS}"><w:body></w:body></w:document>`,
+            'application/xml'
+          );
+          const body = doc.getElementsByTagNameNS(W_NS, 'body')[0];
+
+          for (const line of lines) {
+            const p = doc.createElementNS(W_NS, 'w:p');
+            const r = doc.createElementNS(W_NS, 'w:r');
+            const t = doc.createElementNS(W_NS, 'w:t');
+            t.setAttribute('xml:space', 'preserve');
+            t.textContent = line;
+            r.appendChild(t);
+            p.appendChild(r);
+            body.appendChild(p);
+          }
+
+          const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+          return {
+            id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
+            name: file.name,
+            size: file.size,
+            isTxt: true,
+            entries: null,
+            xmlDoc: doc,
+            blockCount: lines.length,
+            wordCount: words,
+            previewText: text.slice(0, 2500) || '(Empty text file)'
+          };
+        }
+
+        // Parse .docx ZIP archive
+        const entries = await readZipArchive(arrayBuffer);
+        const docXmlBytes = entries.get('word/document.xml');
+        if (!docXmlBytes) {
+          throw new Error(`"${file.name}" is missing word/document.xml and is not a valid Word document.`);
+        }
+
+        const xmlString = new TextDecoder('utf-8').decode(docXmlBytes);
+        const xmlDoc = new DOMParser().parseFromString(xmlString, 'application/xml');
+        const parseError = xmlDoc.querySelector('parsererror');
+        if (parseError) {
+          throw new Error(`XML parsing error in "${file.name}": ${parseError.textContent}`);
+        }
+
+        const body = xmlDoc.getElementsByTagNameNS(W_NS, 'body')[0];
+        if (!body) {
+          throw new Error(`"${file.name}" does not contain a valid <w:body> element.`);
+        }
+
+        // Extract plain text & block statistics for UI preview
+        let blockCount = 0;
+        const previewLines = [];
+        for (const child of Array.from(body.childNodes)) {
+          if (child.nodeType !== 1) continue;
+          const localName = child.localName;
+          if (localName === 'sectPr') continue;
+          blockCount++;
+
+          if (localName === 'p') {
+            const texts = Array.from(child.getElementsByTagNameNS(W_NS, 't')).map(n => n.textContent).join('');
+            if (texts.trim()) previewLines.push(texts);
+          } else if (localName === 'tbl') {
+            const rows = child.getElementsByTagNameNS(W_NS, 'tr').length;
+            previewLines.push(`[Table: ${rows} row${rows === 1 ? '' : 's'}]`);
+          }
+        }
+
+        const fullPreview = previewLines.join('\n');
+        const wordCount = fullPreview.trim() ? fullPreview.trim().split(/\s+/).length : 0;
+
+        return {
+          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
+          name: file.name,
+          size: file.size,
+          isTxt: false,
+          entries,
+          xmlDoc,
+          blockCount,
+          wordCount,
+          previewText: fullPreview.slice(0, 2500) || '(Document contains no visible text paragraphs)'
+        };
+      }
+
+      /**
+       * Sanitize nodes imported from secondary .docx files so Word never encounters
+       * dangling relationship IDs (r:id / r:embed) from unmerged media or external links.
+       */
+      function sanitizeImportedNode(node, targetDoc, preserveFormatting) {
+        const cloned = targetDoc.importNode(node, true);
+
+        // If user unchecked "Preserve source formatting & tables", strip styling & flatten tables to paragraphs
+        if (!preserveFormatting) {
+          const textContent = Array.from(cloned.getElementsByTagNameNS(W_NS, 't'))
+            .map(t => t.textContent)
+            .join(' ');
+          const cleanP = targetDoc.createElementNS(W_NS, 'w:p');
+          const cleanR = targetDoc.createElementNS(W_NS, 'w:r');
+          const cleanT = targetDoc.createElementNS(W_NS, 'w:t');
+          cleanT.setAttribute('xml:space', 'preserve');
+          cleanT.textContent = textContent;
+          cleanR.appendChild(cleanT);
+          cleanP.appendChild(cleanR);
+          return cleanP;
+        }
+
+        // Remove drawings/images from secondary files whose binary media isn't mapped in primary rels
+        const drawings = Array.from(cloned.getElementsByTagNameNS(W_NS, 'drawing'));
+        for (const d of drawings) {
+          const placeholder = targetDoc.createElementNS(W_NS, 'w:t');
+          placeholder.textContent = '[Embedded Media Omitted]';
+          if (d.parentNode) {
+            d.parentNode.replaceChild(placeholder, d);
+          }
+        }
+
+        // Unwrap <w:hyperlink> elements into their inner <w:r> runs so broken r:id links don't trigger warnings
+        const hyperlinks = Array.from(cloned.getElementsByTagNameNS(W_NS, 'hyperlink'));
+        for (const hl of hyperlinks) {
+          const parent = hl.parentNode;
+          if (!parent) continue;
+          while (hl.firstChild) {
+            parent.insertBefore(hl.firstChild, hl);
+          }
+          parent.removeChild(hl);
+        }
+
+        // Strip any remaining footnotes/endnotes/header/footer references with secondary IDs
+        const unsafeTags = ['footnoteReference', 'endnoteReference', 'headerReference', 'footerReference', 'altChunk'];
+        for (const tag of unsafeTags) {
+          const els = Array.from(cloned.getElementsByTagNameNS(W_NS, tag));
+          for (const el of els) {
+            if (el.parentNode) el.parentNode.removeChild(el);
+          }
+        }
+
+        return cloned;
+      }
+
+      /**
+       * Helper builders for structural OpenXML elements (Page Break, Heading, Spacer)
+       */
+      function createPageBreakParagraph(xmlDoc) {
+        const p = xmlDoc.createElementNS(W_NS, 'w:p');
+        const r = xmlDoc.createElementNS(W_NS, 'w:r');
+        const br = xmlDoc.createElementNS(W_NS, 'w:br');
+        br.setAttributeNS(W_NS, 'w:type', 'page');
+        r.appendChild(br);
+        p.appendChild(r);
+        return p;
+      }
+
+      function createSpacerParagraph(xmlDoc) {
+        return xmlDoc.createElementNS(W_NS, 'w:p');
+      }
+
+      function createSectionHeadingParagraph(xmlDoc, titleText, isLargeBanner = false) {
+        const p = xmlDoc.createElementNS(W_NS, 'w:p');
+        const pPr = xmlDoc.createElementNS(W_NS, 'w:pPr');
+
+        // Add subtle bottom border divider & spacing
+        const pBdr = xmlDoc.createElementNS(W_NS, 'w:pBdr');
+        const bottom = xmlDoc.createElementNS(W_NS, 'w:bottom');
+        bottom.setAttributeNS(W_NS, 'w:val', 'single');
+        bottom.setAttributeNS(W_NS, 'w:sz', isLargeBanner ? '12' : '6');
+        bottom.setAttributeNS(W_NS, 'w:space', '4');
+        bottom.setAttributeNS(W_NS, 'w:color', '2563EB');
+        pBdr.appendChild(bottom);
+        pPr.appendChild(pBdr);
+
+        const spacing = xmlDoc.createElementNS(W_NS, 'w:spacing');
+        spacing.setAttributeNS(W_NS, 'w:before', '240');
+        spacing.setAttributeNS(W_NS, 'w:after', '140');
+        pPr.appendChild(spacing);
+        p.appendChild(pPr);
+
+        const r = xmlDoc.createElementNS(W_NS, 'w:r');
+        const rPr = xmlDoc.createElementNS(W_NS, 'w:rPr');
+        const b = xmlDoc.createElementNS(W_NS, 'w:b');
+        const color = xmlDoc.createElementNS(W_NS, 'w:color');
+        color.setAttributeNS(W_NS, 'w:val', '1E3A8A');
+        const sz = xmlDoc.createElementNS(W_NS, 'w:sz');
+        sz.setAttributeNS(W_NS, 'w:val', isLargeBanner ? '32' : '26'); // Half-points (16pt / 13pt)
+        rPr.appendChild(b);
+        rPr.appendChild(color);
+        rPr.appendChild(sz);
+        r.appendChild(rPr);
+
+        const t = xmlDoc.createElementNS(W_NS, 'w:t');
+        t.setAttribute('xml:space', 'preserve');
+        t.textContent = titleText;
+        r.appendChild(t);
+        p.appendChild(r);
+
+        return p;
+      }
+
+      function createBulletItemParagraph(xmlDoc, text) {
+        const p = xmlDoc.createElementNS(W_NS, 'w:p');
+        const pPr = xmlDoc.createElementNS(W_NS, 'w:pPr');
+        const ind = xmlDoc.createElementNS(W_NS, 'w:ind');
+        ind.setAttributeNS(W_NS, 'w:left', '360');
+        pPr.appendChild(ind);
+        p.appendChild(pPr);
+
+        const r = xmlDoc.createElementNS(W_NS, 'w:r');
+        const t = xmlDoc.createElementNS(W_NS, 'w:t');
+        t.setAttribute('xml:space', 'preserve');
+        t.textContent = text;
+        r.appendChild(t);
+        p.appendChild(r);
+        return p;
+      }
+
+      /**
+       * Merge all queued documents into a unified .docx Blob
+       */
+      async function mergeDocumentsToDocx(docs, options) {
+        if (!docs || docs.length === 0) {
+          throw new Error('No documents available to merge.');
+        }
+
+        // Select the first .docx file as the base OpenXML template (or create fallback if all are .txt)
+        const primaryDocx = docs.find(d => !d.isTxt);
+        const baseEntries = primaryDocx
+          ? new Map(primaryDocx.entries)
+          : createFallbackDocxEntries();
+
+        const baseXmlString = new TextDecoder('utf-8').decode(baseEntries.get('word/document.xml'));
+        const targetXmlDoc = new DOMParser().parseFromString(baseXmlString, 'application/xml');
+        const targetBody = targetXmlDoc.getElementsByTagNameNS(W_NS, 'body')[0];
+
+        // Extract and preserve the final <w:sectPr> (page margins, page size, orientation)
+        let finalSectPr = null;
+        const existingBodyChildren = Array.from(targetBody.childNodes);
+        for (const child of existingBodyChildren) {
+          if (child.nodeType === 1 && child.localName === 'sectPr') {
+            finalSectPr = child;
+          }
+          targetBody.removeChild(child);
+        }
+
+        // Optional Table of Contents / Document Index on Page 1
+        if (options.includeIndex) {
+          targetBody.appendChild(createSectionHeadingParagraph(targetXmlDoc, 'Merged Document Index', true));
+          docs.forEach((docItem, idx) => {
+            const line = `${idx + 1}. ${docItem.name} (${docItem.wordCount.toLocaleString()} words, ${docItem.blockCount} blocks)`;
+            targetBody.appendChild(createBulletItemParagraph(targetXmlDoc, line));
+          });
+          targetBody.appendChild(createPageBreakParagraph(targetXmlDoc));
+        }
+
+        // Iterate through every queued document in order and append its content nodes
+        docs.forEach((docItem, fileIndex) => {
+          const isFirstFile = fileIndex === 0;
+          const isPrimaryTemplate = primaryDocx && docItem.id === primaryDocx.id;
+
+          // Insert separator between files (or heading before first file if heading mode is chosen)
+          if (options.separatorMode === 'heading') {
+            if (!isFirstFile) {
+              targetBody.appendChild(createSpacerParagraph(targetXmlDoc));
+            }
+            const cleanTitle = docItem.name.replace(/\.(docx|txt)$/i, '');
+            targetBody.appendChild(createSectionHeadingParagraph(targetXmlDoc, `${fileIndex + 1}. ${cleanTitle}`, false));
+          } else if (!isFirstFile) {
+            if (options.separatorMode === 'pagebreak') {
+              targetBody.appendChild(createPageBreakParagraph(targetXmlDoc));
+            } else {
+              targetBody.appendChild(createSpacerParagraph(targetXmlDoc));
+            }
+          }
+
+          const srcBody = docItem.xmlDoc.getElementsByTagNameNS(W_NS, 'body')[0];
+          const srcChildren = Array.from(srcBody.childNodes);
+
+          for (const node of srcChildren) {
+            if (node.nodeType !== 1) continue;
+            // Strip intermediate <w:sectPr> blocks to prevent broken section headers/footers
+            if (node.localName === 'sectPr') continue;
+
+            if (isPrimaryTemplate && options.preserveFormatting) {
+              // Direct clone from primary template preserves all native styles, images, and hyperlinks
+              targetBody.appendChild(targetXmlDoc.importNode(node, true));
+            } else {
+              // Sanitize imported nodes from secondary files so relationship IDs never conflict
+              const safeNode = sanitizeImportedNode(node, targetXmlDoc, options.preserveFormatting);
+              targetBody.appendChild(safeNode);
+            }
+          }
+        });
+
+        // Re-attach the primary document's <w:sectPr> at the very end of <w:body>
+        if (finalSectPr) {
+          targetBody.appendChild(finalSectPr);
+        } else {
+          const defaultSectPr = targetXmlDoc.createElementNS(W_NS, 'w:sectPr');
+          targetBody.appendChild(defaultSectPr);
+        }
+
+        // Serialize updated word/document.xml back to UTF-8 bytes
+        const serializer = new XMLSerializer();
+        let serializedXml = serializer.serializeToString(targetXmlDoc);
+        if (!serializedXml.startsWith('<?xml')) {
+          serializedXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' + serializedXml;
+        }
+
+        baseEntries.set('word/document.xml', new TextEncoder().encode(serializedXml));
+
+        // Build final .docx ZIP Blob
+        return buildZipArchive(baseEntries);
+      }
+
+      /* ======================================================================
+         3. APPLICATION STATE & UI CONTROLLER
+         ====================================================================== */
+      const state = {
+        files: [],
+        selectedFileId: null,
+        activePreviewTab: 'combined', // 'combined' | 'selected'
+        draggedIndex: null
+      };
+
+      // DOM References
+      const els = {
+        dropzone: document.getElementById('dropzone'),
+        fileInput: document.getElementById('fileInput'),
+        btnBrowseFiles: document.getElementById('btnBrowseFiles'),
+        queueCountLabel: document.getElementById('queueCountLabel'),
+        btnClearAll: document.getElementById('btnClearAll'),
+        fileList: document.getElementById('fileList'),
+        outputFilename: document.getElementById('outputFilename'),
+        separatorGroup: document.getElementById('separatorGroup'),
+        chkIncludeIndex: document.getElementById('chkIncludeIndex'),
+        chkPreserveFormatting: document.getElementById('chkPreserveFormatting'),
+        btnMergeDownload: document.getElementById('btnMergeDownload'),
+        tabCombinedPreview: document.getElementById('tabCombinedPreview'),
+        tabSelectedFile: document.getElementById('tabSelectedFile'),
+        previewBox: document.getElementById('previewBox'),
+        statFiles: document.getElementById('statFiles'),
+        statBlocks: document.getElementById('statBlocks'),
+        statWords: document.getElementById('statWords'),
+        statusLog: document.getElementById('statusLog'),
+        toastContainer: document.getElementById('toastContainer'),
+        btnSaveDesktop: document.getElementById('btnSaveDesktop'),
+        btnCopyAppHtml: document.getElementById('btnCopyAppHtml')
+      };
+
+      function formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+      }
+
+      function appendLog(message, type = 'info') {
+        const entry = document.createElement('div');
+        entry.className = `log-entry log-${type}`;
+        const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        entry.textContent = `[${time}] ${message}`;
+        els.statusLog.appendChild(entry);
+        els.statusLog.scrollTop = els.statusLog.scrollHeight;
+      }
+
+      function showToast(message, variant = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${variant}`;
+        toast.textContent = message;
+        els.toastContainer.appendChild(toast);
+
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(8px)';
+          toast.style.transition = 'all 0.2s ease';
+          setTimeout(() => toast.remove(), 220);
+        }, 3600);
+      }
+
+      function getSelectedSeparatorMode() {
+        const checked = document.querySelector('input[name="separatorMode"]:checked');
+        return checked ? checked.value : 'pagebreak';
+      }
+
+      /**
+       * Render file queue, stats, and preview panels
+       */
+      function renderUI() {
+        const count = state.files.length;
+        els.queueCountLabel.textContent = `${count} file${count === 1 ? '' : 's'} queued`;
+        els.btnClearAll.style.display = count > 0 ? 'inline-block' : 'none';
+        els.btnMergeDownload.disabled = count === 0;
+
+        // Ensure valid selectedFileId
+        if (count > 0 && !state.files.some(f => f.id === state.selectedFileId)) {
+          state.selectedFileId = state.files[0].id;
+        } else if (count === 0) {
+          state.selectedFileId = null;
+        }
+
+        // Render File List
+        els.fileList.innerHTML = '';
+        if (count === 0) {
+          els.fileList.innerHTML = `
+            <div class="empty-queue">
+              No documents added yet. Add two or more <strong>.docx</strong> files to merge them in order.
+            </div>
+          `;
+        } else {
+          const firstDocxIndex = state.files.findIndex(f => !f.isTxt);
+
+          state.files.forEach((fileObj, idx) => {
+            const item = document.createElement('div');
+            item.className = 'file-item' + (fileObj.id === state.selectedFileId ? ' selected' : '');
+            item.draggable = true;
+            item.dataset.index = String(idx);
+
+            const isBaseTemplate = idx === firstDocxIndex;
+
+            item.innerHTML = `
+              <div class="file-order-badge" title="Merge position #${idx + 1}">${idx + 1}</div>
+              <div class="file-info">
+                <div class="file-name-row">
+                  <span class="file-name" title="${escapeHtml(fileObj.name)}">${escapeHtml(fileObj.name)}</span>
+                  ${isBaseTemplate ? '<span class="badge-base" title="Provides base styles, margins, and fonts">Base Style</span>' : ''}
+                </div>
+                <div class="file-meta">
+                  <span>${formatBytes(fileObj.size)}</span>
+                  <span>•</span>
+                  <span>${fileObj.blockCount} blocks</span>
+                  <span>•</span>
+                  <span>${fileObj.wordCount.toLocaleString()} words</span>
+                </div>
+              </div>
+              <div class="file-actions">
+                <button type="button" class="btn-icon btn-up" title="Move Up" ${idx === 0 ? 'disabled' : ''}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
+                <button type="button" class="btn-icon btn-down" title="Move Down" ${idx === count - 1 ? 'disabled' : ''}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <button type="button" class="btn-icon danger btn-remove" title="Remove File">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+            `;
+
+            // Select item on click
+            item.addEventListener('click', (e) => {
+              if (e.target.closest('button')) return;
+              state.selectedFileId = fileObj.id;
+              state.activePreviewTab = 'selected';
+              renderUI();
+            });
+
+            // Reorder & Remove button handlers
+            item.querySelector('.btn-up').addEventListener('click', () => moveFile(idx, idx - 1));
+            item.querySelector('.btn-down').addEventListener('click', () => moveFile(idx, idx + 1));
+            item.querySelector('.btn-remove').addEventListener('click', () => removeFile(idx));
+
+            // Drag-and-drop list reordering
+            item.addEventListener('dragstart', () => {
+              state.draggedIndex = idx;
+              item.classList.add('dragging');
+            });
+            item.addEventListener('dragend', () => {
+              state.draggedIndex = null;
+              item.classList.remove('dragging');
+            });
+            item.addEventListener('dragover', (e) => {
+              e.preventDefault();
+            });
+            item.addEventListener('drop', (e) => {
+              e.preventDefault();
+              if (state.draggedIndex !== null && state.draggedIndex !== idx) {
+                moveFile(state.draggedIndex, idx);
+              }
+            });
+
+            els.fileList.appendChild(item);
+          });
+        }
+
+        // Update Summary Stats
+        const totalBlocks = state.files.reduce((acc, f) => acc + f.blockCount, 0);
+        const totalWords = state.files.reduce((acc, f) => acc + f.wordCount, 0);
+        els.statFiles.textContent = String(count);
+        els.statBlocks.textContent = totalBlocks.toLocaleString();
+        els.statWords.textContent = totalWords.toLocaleString();
+
+        // Update Preview Tabs & Content
+        els.tabCombinedPreview.classList.toggle('active', state.activePreviewTab === 'combined');
+        els.tabSelectedFile.classList.toggle('active', state.activePreviewTab === 'selected');
+
+        if (count === 0) {
+          els.previewBox.innerHTML = '<div class="preview-placeholder">Upload Word (.docx) files to inspect extracted paragraphs, tables, and structure.</div>';
+        } else if (state.activePreviewTab === 'selected') {
+          const sel = state.files.find(f => f.id === state.selectedFileId) || state.files[0];
+          els.previewBox.textContent = `=== ${sel.name} ===\n\n${sel.previewText}`;
+        } else {
+          const sepMode = getSelectedSeparatorMode();
+          const sepLabel = sepMode === 'pagebreak'
+            ? '\n---------------- [ PAGE BREAK ] ----------------\n\n'
+            : sepMode === 'heading'
+              ? '\n============ [ SECTION HEADING ] ============\n\n'
+              : '\n--- [ Paragraph Spacer ] ---\n\n';
+
+          let outline = '';
+          if (els.chkIncludeIndex.checked) {
+            outline += '[PAGE 1: MERGED DOCUMENT INDEX]\n';
+            state.files.forEach((f, i) => {
+              outline += `  ${i + 1}. ${f.name} (${f.wordCount} words)\n`;
+            });
+            outline += '\n---------------- [ PAGE BREAK ] ----------------\n\n';
+          }
+
+          outline += state.files.map((f, i) => {
+            const snippet = f.previewText.slice(0, 320).trim();
+            return `[#${i + 1}: ${f.name}]\n${snippet}${f.previewText.length > 320 ? '...' : ''}`;
+          }).join(sepLabel);
+
+          els.previewBox.textContent = outline;
+        }
+      }
+
+      function escapeHtml(str) {
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function moveFile(fromIndex, toIndex) {
+        if (toIndex < 0 || toIndex >= state.files.length) return;
+        const [moved] = state.files.splice(fromIndex, 1);
+        state.files.splice(toIndex, 0, moved);
+        appendLog(`Reordered "${moved.name}" to position #${toIndex + 1}.`, 'info');
+        renderUI();
+      }
+
+      function removeFile(index) {
+        const [removed] = state.files.splice(index, 1);
+        appendLog(`Removed "${removed.name}" from queue.`, 'warn');
+        renderUI();
+      }
+
+      async function handleFilesAdded(fileList) {
+        const files = Array.from(fileList || []);
+        if (files.length === 0) return;
+
+        let addedCount = 0;
+        for (const file of files) {
+          const lower = file.name.toLowerCase();
+          if (!lower.endsWith('.docx') && !lower.endsWith('.txt')) {
+            showToast(`Skipped "${file.name}" — only .docx and .txt files are supported.`, 'warning');
+            appendLog(`Skipped unsupported file: ${file.name}`, 'warn');
+            continue;
+          }
+
+          try {
+            appendLog(`Parsing "${file.name}" (${formatBytes(file.size)})...`, 'info');
+            const parsedDoc = await parseUploadedDocument(file);
+            state.files.push(parsedDoc);
+            addedCount++;
+            appendLog(`Loaded "${file.name}" (${parsedDoc.blockCount} blocks, ${parsedDoc.wordCount} words).`, 'ok');
+          } catch (err) {
+            console.error(err);
+            showToast(`Error reading "${file.name}": ${err.message}`, 'error');
+            appendLog(`Failed to parse "${file.name}": ${err.message}`, 'err');
+          }
+        }
+
+        if (addedCount > 0) {
+          showToast(`Added ${addedCount} document${addedCount === 1 ? '' : 's'} to merge queue.`, 'success');
+          renderUI();
+        }
+      }
+
+      /* ======================================================================
+         4. EVENT LISTENERS (DROPZONE, OPTIONS, MERGE EXPORT, DESKTOP SAVER)
+         ====================================================================== */
+      els.btnBrowseFiles.addEventListener('click', (e) => {
+        e.stopPropagation();
+        els.fileInput.click();
+      });
+
+      els.dropzone.addEventListener('click', () => {
+        els.fileInput.click();
+      });
+
+      els.dropzone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          els.fileInput.click();
+        }
+      });
+
+      els.fileInput.addEventListener('change', (e) => {
+        handleFilesAdded(e.target.files);
+        els.fileInput.value = '';
+      });
+
+      els.dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        els.dropzone.classList.add('drag-over');
+      });
+
+      els.dropzone.addEventListener('dragleave', () => {
+        els.dropzone.classList.remove('drag-over');
+      });
+
+      els.dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        els.dropzone.classList.remove('drag-over');
+        if (e.dataTransfer && e.dataTransfer.files) {
+          handleFilesAdded(e.dataTransfer.files);
+        }
+      });
+
+      els.btnClearAll.addEventListener('click', () => {
+        state.files = [];
+        state.selectedFileId = null;
+        appendLog('Cleared all files from queue.', 'warn');
+        showToast('File queue cleared.', 'info');
+        renderUI();
+      });
+
+      // Radio card visual active toggle
+      els.separatorGroup.addEventListener('change', () => {
+        const cards = els.separatorGroup.querySelectorAll('.radio-card');
+        cards.forEach(card => {
+          const input = card.querySelector('input[type="radio"]');
+          card.classList.toggle('active', input.checked);
+        });
+        renderUI();
+      });
+
+      els.chkIncludeIndex.addEventListener('change', renderUI);
+      els.chkPreserveFormatting.addEventListener('change', renderUI);
+
+      els.tabCombinedPreview.addEventListener('click', () => {
+        state.activePreviewTab = 'combined';
+        renderUI();
+      });
+
+      els.tabSelectedFile.addEventListener('click', () => {
+        state.activePreviewTab = 'selected';
+        renderUI();
+      });
+
+      // Main Merge & Download .DOCX Button
+      els.btnMergeDownload.addEventListener('click', async () => {
+        if (state.files.length === 0) return;
+
+        let outName = (els.outputFilename.value || 'Merged_Document.docx').trim();
+        if (!outName.toLowerCase().endsWith('.docx')) {
+          outName += '.docx';
+        }
+
+        els.btnMergeDownload.disabled = true;
+        const originalBtnHtml = els.btnMergeDownload.innerHTML;
+        els.btnMergeDownload.textContent = 'Building Unified .DOCX...';
+
+        try {
+          appendLog(`Starting merge of ${state.files.length} document(s) into "${outName}"...`, 'info');
+          const blob = await mergeDocumentsToDocx(state.files, {
+            separatorMode: getSelectedSeparatorMode(),
+            includeIndex: els.chkIncludeIndex.checked,
+            preserveFormatting: els.chkPreserveFormatting.checked
+          });
+
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = outName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+          appendLog(`Success! Generated "${outName}" (${formatBytes(blob.size)}).`, 'ok');
+          showToast(`Merged "${outName}" downloaded!`, 'success');
+        } catch (err) {
+          console.error(err);
+          appendLog(`Merge failed: ${err.message}`, 'err');
+          showToast(`Merge failed: ${err.message}`, 'error');
+        } finally {
+          els.btnMergeDownload.innerHTML = originalBtnHtml;
+          els.btnMergeDownload.disabled = state.files.length === 0;
+        }
+      });
+
+      /* ======================================================================
+         5. DESKTOP SINGLE-FILE APP SAVER & CLIPBOARD EXPORTER
+         ====================================================================== */
+      function getCleanStandaloneHtml() {
+        // Clone the live document so we can reset dynamic UI states before serializing
+        const clonedHtml = document.documentElement.cloneNode(true);
+
+        // 1. Clear active toasts so the saved file opens cleanly
+        const clonedToasts = clonedHtml.querySelector('#toastContainer');
+        if (clonedToasts) clonedToasts.innerHTML = '';
+
+        // 2. Reset file list to initial empty state
+        const clonedFileList = clonedHtml.querySelector('#fileList');
+        if (clonedFileList) {
+          clonedFileList.innerHTML = `
+            <div class="empty-queue">
+              No documents added yet. Add two or more <strong>.docx</strong> files to merge them in order.
+            </div>
+          `;
+        }
+
+        // 3. Reset queue counter, clear button, stats, preview, and log
+        const clonedQueueLabel = clonedHtml.querySelector('#queueCountLabel');
+        if (clonedQueueLabel) clonedQueueLabel.textContent = '0 files queued';
+
+        const clonedClearBtn = clonedHtml.querySelector('#btnClearAll');
+        if (clonedClearBtn) clonedClearBtn.style.display = 'none';
+
+        const clonedMergeBtn = clonedHtml.querySelector('#btnMergeDownload');
+        if (clonedMergeBtn) clonedMergeBtn.setAttribute('disabled', 'disabled');
+
+        const clonedPreview = clonedHtml.querySelector('#previewBox');
+        if (clonedPreview) {
+          clonedPreview.innerHTML = '<div class="preview-placeholder">Upload Word (.docx) files to inspect extracted paragraphs, tables, and structure.</div>';
+        }
+
+        const statIds = ['statFiles', 'statBlocks', 'statWords'];
+        statIds.forEach(id => {
+          const el = clonedHtml.querySelector('#' + id);
+          if (el) el.textContent = '0';
+        });
+
+        const clonedLog = clonedHtml.querySelector('#statusLog');
+        if (clonedLog) {
+          clonedLog.innerHTML = '<div class="log-entry log-info">[System] Offline OpenXML &amp; ZIP Engine initialized. Ready.</div>';
+        }
+
+        return '<!DOCTYPE html>\n' + clonedHtml.outerHTML;
+      }
+
+      // Save App to Desktop (.html) using File System Access API with Blob fallback
+      els.btnSaveDesktop.addEventListener('click', async () => {
+        const htmlContent = getCleanStandaloneHtml();
+
+        try {
+          if (typeof window.showSaveFilePicker === 'function') {
+            const handle = await window.showSaveFilePicker({
+              suggestedName: 'Word-Merger-Offline.html',
+              types: [
+                {
+                  description: 'Offline HTML Web Application',
+                  accept: { 'text/html': ['.html'] }
+                }
+              ]
+            });
+            const writable = await handle.createWritable();
+            await writable.write(htmlContent);
+            await writable.close();
+            showToast('App saved to your computer! Double-click it anytime to run offline.', 'success');
+            appendLog('Exported standalone offline HTML app via File System Picker.', 'ok');
+            return;
+          }
+        } catch (err) {
+          // If user explicitly cancelled the save dialog, do not trigger fallback download
+          if (err && err.name === 'AbortError') {
+            return;
+          }
+          // Otherwise fall through to standard Blob download (e.g., inside sandboxed iframes)
+        }
+
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Word-Merger-Offline.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+        showToast('Downloaded "Word-Merger-Offline.html" — move it to your Desktop!', 'success');
+        appendLog('Downloaded standalone offline HTML app (Word-Merger-Offline.html).', 'ok');
+      });
+
+      // Copy App HTML using temporary textarea + document.execCommand('copy')
+      els.btnCopyAppHtml.addEventListener('click', () => {
+        const htmlContent = getCleanStandaloneHtml();
+        const textarea = document.createElement('textarea');
+        textarea.value = htmlContent;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        let copied = false;
+        try {
+          copied = document.execCommand('copy');
+        } catch (err) {
+          copied = false;
+        }
+        document.body.removeChild(textarea);
+
+        if (copied) {
+          showToast('Complete standalone HTML source code copied to clipboard!', 'success');
+          appendLog('Copied clean standalone HTML source code to clipboard.', 'ok');
+        } else {
+          showToast('Unable to copy automatically — please use "Save App to Desktop (.html)".', 'warning');
+        }
+      });
+
+      // Initial render
+      renderUI();
+    })();
+  </script>
+</body>
+</html>
